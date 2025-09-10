@@ -1,0 +1,69 @@
+# grafana-values.yaml
+replicaCount: 1
+
+serviceAccount:
+  create: false              # we created it in Terraform; set to false so chart doesn't create another
+  name: grafana-sa
+
+securityContext:
+  runAsUser: 472             # grafana's default non-root UID
+  fsGroup: 472
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClassName: gp2
+
+admin:
+  existingSecret: grafana-admin-creds
+  # The chart expects values for admin credentials when using existingSecret to reference keys:
+  # - admin-user
+  # - admin-password
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        isDefault: true
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        # if using external prometheus, adjust url
+
+# Sidecar to automatically pick up dashboards from a configmap (optional)
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        options:
+          path: /var/lib/grafana/dashboards
+
+dashboards:
+  # We can attach dashboards via configMaps. Omitted here to keep example small.
+
+ingress:
+  enabled: false
+  # Toggle on and set host/tls below if you want ingress
+  # annotations:
+  #   kubernetes.io/ingress.class: nginx
+  #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  #   nginx.ingress.kubernetes.io/configuration-snippet: |
+  #     more_set_headers "X-Frame-Options: DENY";
+  #     more_set_headers "Strict-Transport-Security: max-age=63072000; includeSubdomains; preload";
+  # hosts:
+  #   - grafana.example.com
+  # tls:
+  #   - secretName: grafana-tls
+  #     hosts:
+  #       - grafana.example.com
+
+rbac:
+  # disable chart-managed RBAC since we create minimal RBAC via kubernetes provider
+  create: false
